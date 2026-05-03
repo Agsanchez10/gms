@@ -414,8 +414,7 @@ After running `python seed_data.py`, use these accounts:
 
 This project is part of the Spring 2026 Computer Science coursework.
 
-## Support
+## Acknowledgments
 
-For issues or questions, contact the project team or instructor.
-#   g m s  
+- **GitHub Copilot** — AI pair programming assistant used throughout development to help implement features, debug issues, and accelerate code generation.
  
