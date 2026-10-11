@@ -1,61 +1,82 @@
 # Gym Management System
 
-A comprehensive web-based Gym Management System with role-based dashboards for managing members, classes, and equipment usage.
+A web-based Gym Management System with role-based dashboards for managing members, membership plans, fitness classes, and equipment usage.
+
+> Built as part of Spring 2026 Computer Science coursework.
+
+## Table of Contents
+
+- [Technology Stack](#technology-stack)
+- [Project Structure](#project-structure)
+- [Application Architecture](#application-architecture)
+- [Features](#features)
+- [Installation & Setup](#installation--setup)
+- [Demo Login Credentials](#demo-login-credentials)
+- [Environment Variables](#environment-variables)
+- [API Documentation](#api-documentation)
+- [Database Schema](#database-schema)
+- [Development Workflow](#development-workflow)
+- [Security Considerations](#security-considerations)
+- [Troubleshooting](#troubleshooting)
+- [Future Enhancements](#future-enhancements)
+- [Contributing](#contributing)
+- [License](#license)
+- [Acknowledgments](#acknowledgments)
+
+## Technology Stack
+
+### Backend
+- **Framework:** FastAPI (Python)
+- **Database:** PostgreSQL via SQLAlchemy ORM and the psycopg2 driver
+- **Validation:** Pydantic v2
+- **Authorization:** Role-based access control (RBAC); the caller is identified by a `staff_id` query parameter (see [Security Considerations](#security-considerations))
+- **API docs:** OpenAPI / Swagger UI, auto-generated at `/docs`
+
+### Frontend
+- **Framework:** React 18 with TypeScript
+- **Build tool:** Vite
+- **Routing:** React Router v6
+- **HTTP client:** Axios
+- **Forms:** React Hook Form
+
+### Database
+- **DBMS:** PostgreSQL 12+
+- **Schema:** Designed from an ER diagram — four core entities (Member, Staff, Class, Machine) plus membership plans and the relationships between them (Membership, ClassEnrollment, MachineUsage)
 
 ## Project Structure
 
 ```
 gym-management-system/
-├── backend/              # FastAPI backend application
-│   ├── routes/          # API route handlers (members, staff, classes,
-│   │                    #   machines, usage, plans, memberships,
-│   │                    #   manager, trainer)
-│   ├── schemas/         # Pydantic validation schemas
-│   ├── models.py        # SQLAlchemy ORM models
-│   ├── main.py          # FastAPI app entry point & router registration
-│   ├── config.py        # Configuration settings
-│   ├── database.py      # Database session management
-│   ├── auth.py          # Authentication & authorization
-│   ├── import_csv.py    # CSV data import utility
-│   ├── seed_data.py     # Demo data seeder
-│   ├── requirements.txt # Python dependencies
-│   └── .env.example     # Environment variables template
-├── frontend/            # React TypeScript frontend
+├── backend/                 # FastAPI backend
+│   ├── routes/              # API route handlers: members, staff, classes,
+│   │                        #   machines, usage, plans, memberships,
+│   │                        #   manager, trainer
+│   ├── schemas/             # Pydantic validation schemas
+│   ├── models.py            # SQLAlchemy ORM models
+│   ├── main.py              # App entry point, CORS, router registration
+│   ├── config.py            # Settings (incl. hardcoded CORS origins)
+│   ├── database.py          # Engine, connection pool, session management
+│   ├── auth.py              # Authentication & role checks
+│   ├── import_csv.py        # CSV data import utility
+│   ├── seed_data.py         # Demo data seeder
+│   ├── setup.sh / setup.bat # Automated setup scripts
+│   ├── requirements.txt     # Python dependencies
+│   └── .env.example         # Environment variable template
+├── frontend/                # React + TypeScript frontend
 │   ├── src/
-│   │   ├── pages/       # Dashboard pages (Login, Manager, Reception,
-│   │   │                #   Trainer)
-│   │   ├── components/  # Reusable React components (currently empty)
-│   │   ├── services/    # API service layer (api.ts)
-│   │   ├── context/     # React context (AuthContext)
-│   │   ├── App.tsx      # Main app component
-│   │   └── main.tsx     # Entry point
-│   ├── package.json     # Node dependencies
-│   ├── vite.config.ts   # Vite configuration
-│   └── tsconfig.json    # TypeScript configuration
-├── .gitignore          # Git ignore rules
-└── README.md           # This file
+│   │   ├── pages/           # Login, Manager, Reception, Trainer dashboards
+│   │   ├── components/      # Reusable components (currently empty)
+│   │   ├── services/        # API service layer (api.ts)
+│   │   ├── context/         # React context (AuthContext)
+│   │   ├── App.tsx          # Root component & routes
+│   │   └── main.tsx         # Entry point
+│   ├── setup.sh / setup.bat # Automated setup scripts
+│   ├── package.json         # Node dependencies
+│   ├── vite.config.ts       # Vite configuration
+│   └── tsconfig.json        # TypeScript configuration
+├── .gitignore
+└── README.md
 ```
-
-## Technology Stack
-
-### Backend
-- **Framework**: FastAPI (Python)
-- **Database**: PostgreSQL with SQLAlchemy ORM + psycopg2 driver
-- **Authentication**: Session-based RBAC via `staff_id` query parameter
-- **API Documentation**: OpenAPI / Swagger (auto-generated at `/docs`)
-
-### Frontend
-- **Framework**: React 18 with TypeScript
-- **Build Tool**: Vite
-- **Routing**: React Router v6
-- **HTTP Client**: Axios
-- **Form Management**: React Hook Form
-
-### Database
-- **DBMS**: PostgreSQL
-- **Schema**: ER diagram-based design with:
-  - Members, Staff, Classes, Machines
-  - Relationships: Memberships, ClassEnrollment, MachineUsage
 
 ## Application Architecture
 
@@ -68,104 +89,99 @@ gym-management-system/
 │  ManagerDashboard | ReceptionDashboard | TrainerDashboard   │
 │                                                             │
 │  src/services/api.ts  (Axios)                               │
-│    • Axios interceptor attaches ?staff_id=<id> to every     │
-│      request so the backend can verify the caller's role    │
-└────────────────────┬────────────────────────────────────────┘
-                     │  HTTP/JSON  (CORS: localhost:3000/5173/8000)
-                     ▼
+│    • Interceptor appends ?staff_id=<id> to every request    │
+│      so the backend can look up the caller's role           │
+└──────────────────────────────┬──────────────────────────────┘
+                               │  HTTP/JSON
+                               │  (CORS: localhost:3000/5173/8000)
+                               ▼
 ┌─────────────────────────────────────────────────────────────┐
 │  Application Layer  (FastAPI · Python · localhost:8000)     │
 │                                                             │
-│  main.py — CORS middleware, startup init_db(), 9 routers    │
+│  main.py — CORS middleware, init_db() on startup, 9 routers │
 │                                                             │
 │  Request pipeline per endpoint:                             │
 │    1. Pydantic v2 schema  — type & constraint validation    │
-│    2. require_role()      — RBAC (MANAGER/TRAINER/         │
-│                              RECEPTION); raises 403 if fail │
-│    3. Route handler       — business logic + duplicate      │
-│                              checks                         │
-│    4. SQLAlchemy ORM /    — parameterised queries;          │
-│       text() + params       injection-safe                  │
-│    5. get_db() dependency — per-request session, always     │
-│                              closed in finally block        │
+│    2. require_role()      — RBAC (MANAGER / TRAINER /       │
+│                             RECEPTION); 403 on failure      │
+│    3. Route handler       — business logic, duplicate checks│
+│    4. SQLAlchemy ORM or   — parameterized queries           │
+│       text() + params       (SQL-injection safe)            │
+│    5. get_db() dependency — per-request session, closed     │
+│                             in a finally block              │
 │                                                             │
 │  Routers under /api/v1/:                                    │
 │    members · staff · classes · machines · usage · plans     │
 │    memberships · manager · trainer                          │
-└────────────────────┬────────────────────────────────────────┘
-                     │  SQLAlchemy + psycopg2
-                     ▼
+└──────────────────────────────┬──────────────────────────────┘
+                               │  SQLAlchemy + psycopg2
+                               ▼
 ┌─────────────────────────────────────────────────────────────┐
-│  Database  (PostgreSQL 12+ · port 5432 · gym_db)           │
+│  Database  (PostgreSQL 12+ · port 5432 · gym_db)            │
 │                                                             │
 │  Connection pool: 10 persistent + 20 overflow connections   │
-│  pool_pre_ping=True — stale connections discarded           │
+│  pool_pre_ping=True — stale connections are discarded       │
 │                                                             │
-│  7 entity tables:                                           │
-│    member · member_plan · membership · staff                │
-│    class · machine · machine_usage                          │
-│  1 association table:  class_enrollment                     │
+│  8 tables:                                                  │
+│    member · staff · class · machine · member_plan           │
+│    membership · class_enrollment · machine_usage            │
 │                                                             │
-│  Schema managed by SQLAlchemy metadata (init_db on start)  │
+│  Schema created from SQLAlchemy metadata (init_db on start) │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-**Data flow example — Reception signs a member into a machine:**
-1. `ReceptionDashboard` calls `usageAPI.startUsage(machineId, memberId)` in `api.ts`
-2. Axios sends `POST /api/v1/machines/{id}/start?staff_id=<id>` to FastAPI
-3. `require_role(RECEPTION, TRAINER, MANAGER)` verifies the caller's role via a DB lookup on `staff`
-4. Route handler confirms the machine and member exist, checks member is not suspended
-5. SQLAlchemy `text()` inserts a row into `machine_usage` with `NOW()` as `start_time`
-6. JSON response returns the new `usage_id` to the frontend
+**Data flow example — Reception signs a member onto a machine:**
+1. `ReceptionDashboard` calls `usageAPI.startUsage(machineId, memberId)` in `api.ts`.
+2. Axios sends `POST /api/v1/machines/{machine_id}/start?staff_id=<id>` to FastAPI.
+3. `require_role(RECEPTION, TRAINER, MANAGER)` looks up the caller in the `staff` table and verifies their role.
+4. The route handler confirms the machine and member exist and that the member is not suspended.
+5. SQLAlchemy `text()` inserts a row into `machine_usage` with `NOW()` as `start_time`.
+6. The JSON response returns the new `usage_id` to the frontend.
 
 ## Features
 
 ### Member Management
 - Register new members with personal information
-- Manage membership plans (Basic, Premium, VIP)
-- Track membership status (Active, Inactive, Suspended)
-- View member history and usage
+- Assign membership plans (Basic, Premium, VIP) and renew them
+- Track member status (Active, Inactive, Suspended)
+- View member history and machine usage
 
 ### Class Management
 - Create and manage fitness classes
 - Assign trainers to classes
-- Enroll/remove members from classes
-- Track attendance and check-ins
+- Enroll and remove members
+- Track attendance via check-ins
 
 ### Machine Usage Tracking
-- Track member machine usage (start/end times)
-- View usage statistics and analytics
+- Record machine sessions (start/end times)
 - Manage machine status (Available, Maintenance, Retired)
-- Generate usage reports by machine or member
+- View usage statistics per machine or per member
 
 ### Role-Based Dashboards
 
-#### Reception Staff
-- Sign members into the gym
-- Register new members
-- View machine status
-- Manage class enrollments
-
-#### Trainers
-- View assigned classes
-- Check class rosters
-- Mark attendance
-
-#### Managers
-- View comprehensive analytics
-- Track machine usage statistics
-- Monitor class enrollment
-- Generate membership reports
-- Create staff accounts
+| Role | Capabilities |
+|------|--------------|
+| **Reception** | Register members, sign members onto machines, view machine status, manage class enrollments |
+| **Trainer** | View assigned classes, view class rosters, mark attendance |
+| **Manager** | Dashboard overview, machine usage and class enrollment analytics, membership status reports, top-member rankings, create staff accounts |
 
 ## Installation & Setup
 
 ### Prerequisites
 - Python 3.9+
 - Node.js 16+
-- PostgreSQL 12+
+- PostgreSQL 12+ (running locally)
 
-### Backend Setup
+### 1. Create the database
+
+```bash
+createdb -U postgres gym_db
+# or, inside psql:  CREATE DATABASE gym_db;
+```
+
+The tables themselves are created automatically from the SQLAlchemy models.
+
+### 2. Backend
 
 ```bash
 cd backend
@@ -173,40 +189,34 @@ cd backend
 
 **Option A — Automated setup script (recommended)**
 ```bash
+# Linux / macOS
+bash setup.sh
+
 # Windows
 setup.bat
-
-# Linux / Mac
-bash setup.sh
 ```
 
 **Option B — Manual setup**
-
-1. Create and activate a virtual environment
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # Windows: venv\Scripts\activate
-   ```
-
-2. Install Python dependencies
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. Set up environment variables
-   ```bash
-   cp .env.example .env   # Windows: copy .env.example .env
-   # Edit .env with your PostgreSQL credentials
-   ```
-
-**Then (both options):**
 ```bash
-python seed_data.py      # Populate demo data
-uvicorn main:app --reload
+python -m venv venv
+source venv/bin/activate        # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+cp .env.example .env            # Windows: copy .env.example .env
 ```
-Backend available at `http://localhost:8000` · API docs at `http://localhost:8000/docs`
+Then edit `.env` with your PostgreSQL credentials (see [Environment Variables](#environment-variables)).
 
-### Frontend Setup
+**Then (either option), with the virtual environment active:**
+```bash
+python seed_data.py             # Populate demo data
+uvicorn main:app --reload       # Start the API server
+```
+
+- API: http://localhost:8000
+- Swagger UI: http://localhost:8000/docs
+
+### 3. Frontend
+
+In a second terminal:
 
 ```bash
 cd frontend
@@ -214,11 +224,11 @@ cd frontend
 
 **Option A — Automated setup script (recommended)**
 ```bash
+# Linux / macOS
+bash setup.sh
+
 # Windows
 setup.bat
-
-# Linux / Mac
-bash setup.sh
 ```
 
 **Option B — Manual setup**
@@ -226,87 +236,31 @@ bash setup.sh
 npm install
 ```
 
-**Then (both options):**
+**Then (either option):**
 ```bash
 npm run dev
 ```
-Frontend available at `http://localhost:5173`
 
-## API Documentation
+Frontend: http://localhost:5173
 
-### Staff / Auth Endpoints
-- `POST /api/v1/staff/login` — Staff login
-- `POST /api/v1/staff/register` — Create staff account (Manager only)
-- `GET /api/v1/staff/` — List all staff
-- `GET /api/v1/staff/{staff_id}` — Get staff details
+## Demo Login Credentials
 
-### Member Endpoints
-- `GET /api/v1/members/` — List all members (supports `status_filter`)
-- `GET /api/v1/members/{member_id}` — Get member details
-- `POST /api/v1/members/` — Create new member
-- `PUT /api/v1/members/{member_id}` — Update member
-- `DELETE /api/v1/members/{member_id}` — Delete member
-- `PATCH /api/v1/members/{member_id}/status` — Update member status
-- `GET /api/v1/members/{member_id}/current-membership/` — Get active membership
-- `GET /api/v1/members/{member_id}/usage` — Get machine usage history
+After running `python seed_data.py`, log in with any of these accounts:
 
-### Class Endpoints
-- `GET /api/v1/classes/` — List classes (supports `trainer_id` filter)
-- `GET /api/v1/classes/{class_id}` — Get class details
-- `POST /api/v1/classes/` — Create class
-- `PUT /api/v1/classes/{class_id}` — Update class
-- `DELETE /api/v1/classes/{class_id}` — Delete class
-- `POST /api/v1/classes/{class_id}/enroll/{member_id}` — Enroll member
-- `DELETE /api/v1/classes/{class_id}/enroll/{member_id}` — Remove member
-- `PUT /api/v1/classes/{class_id}/checkin/{member_id}` — Mark attendance
+| Role      | Email               | Password    |
+|-----------|---------------------|-------------|
+| Manager   | manager@gym.com     | password123 |
+| Trainer   | trainer@gym.com     | password123 |
+| Reception | reception@gym.com   | password123 |
 
-### Machine Endpoints
-- `GET /api/v1/machines/` — List machines (supports `status_filter`, `category_filter`)
-- `GET /api/v1/machines/{machine_id}` — Get machine details
-- `POST /api/v1/machines/` — Add machine
-- `PUT /api/v1/machines/{machine_id}` — Update machine
-- `DELETE /api/v1/machines/{machine_id}` — Delete machine
-- `PATCH /api/v1/machines/{machine_id}/status` — Update machine status
-- `GET /api/v1/machines/{machine_id}/usage` — Get usage history for machine
-
-### Machine Usage Endpoints
-- `POST /api/v1/machines/{machine_id}/start` — Start machine session (sign in member)
-- `PUT /api/v1/machines/{machine_id}/end/{usage_id}` — End machine session
-- `GET /api/v1/stats/machine/{machine_id}` — Usage stats for a machine
-- `GET /api/v1/stats/member/{member_id}` — Usage stats for a member
-
-### Plan Endpoints
-- `GET /api/v1/plans/` — List all plans
-- `GET /api/v1/plans/{plan_id}` — Get plan details
-- `POST /api/v1/plans/` — Create plan
-- `PUT /api/v1/plans/{plan_id}` — Update plan
-- `DELETE /api/v1/plans/{plan_id}` — Delete plan
-
-### Membership Endpoints
-- `POST /api/v1/memberships/members/{member_id}/enroll` — Enroll member in plan
-- `GET /api/v1/memberships/members/{member_id}/current` — Get current membership
-- `PUT /api/v1/memberships/members/{member_id}/{plan_id}/renew` — Renew membership
-
-### Trainer Dashboard Endpoints
-- `GET /api/v1/trainer/my-classes` — Classes taught by the logged-in trainer
-- `GET /api/v1/trainer/classes/{class_id}/roster` — Full roster for a class
-
-### Manager Analytics Endpoints
-- `GET /api/v1/manager/dashboard/overview` — Dashboard summary stats
-- `GET /api/v1/manager/analytics/machine-usage` — Machine usage analytics (supports `days`)
-- `GET /api/v1/manager/analytics/class-enrollment` — Class enrollment stats
-- `GET /api/v1/manager/analytics/membership-status` — Membership status breakdown
-- `GET /api/v1/manager/analytics/staff-roles` — Staff role distribution
-- `GET /api/v1/manager/analytics/top-members` — Most active members
-
-See full API documentation at `http://localhost:8000/docs` (Swagger UI)
+These are for local development only — do not use them in any deployed environment.
 
 ## Environment Variables
 
-### Backend (.env)
-Copy `backend/.env.example` to `backend/.env` and fill in your credentials.
-```
-DATABASE_URL=postgresql://user:password@localhost:5432/gym_db
+Copy `backend/.env.example` to `backend/.env` and fill in your values:
+
+```env
+DATABASE_URL=postgresql://postgres:your_password@localhost:5432/gym_db
 DATABASE_HOST=localhost
 DATABASE_PORT=5432
 DATABASE_NAME=gym_db
@@ -316,105 +270,193 @@ DEBUG=True
 API_TITLE=Gym Management System API
 API_VERSION=1.0.0
 ```
-CORS origins (`localhost:3000`, `localhost:5173`, `localhost:8000`) are hardcoded in `config.py` and do not need to be set in `.env`.
+
+Keep `DATABASE_URL` consistent with the individual `DATABASE_*` values. Never commit your `.env` file.
+
+CORS origins (`localhost:3000`, `localhost:5173`, `localhost:8000`) are hardcoded in `config.py` and are not read from `.env`.
+
+## API Documentation
+
+All endpoints are prefixed with `/api/v1`. Protected endpoints expect a `staff_id` query parameter, which the frontend adds automatically. Full interactive docs are at http://localhost:8000/docs.
+
+### Staff / Auth
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/staff/login` | Staff login |
+| POST | `/staff/register` | Create staff account (Manager only) |
+| GET | `/staff/` | List all staff |
+| GET | `/staff/{staff_id}` | Get staff details |
+
+### Members
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/members/` | List members (optional `status_filter`) |
+| GET | `/members/{member_id}` | Get member details |
+| POST | `/members/` | Create member |
+| PUT | `/members/{member_id}` | Update member |
+| DELETE | `/members/{member_id}` | Delete member |
+| PATCH | `/members/{member_id}/status` | Update member status |
+| GET | `/members/{member_id}/current-membership/` | Get active membership |
+| GET | `/members/{member_id}/usage` | Get machine usage history |
+
+### Classes
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/classes/` | List classes (optional `trainer_id`) |
+| GET | `/classes/{class_id}` | Get class details |
+| POST | `/classes/` | Create class |
+| PUT | `/classes/{class_id}` | Update class |
+| DELETE | `/classes/{class_id}` | Delete class |
+| POST | `/classes/{class_id}/enroll/{member_id}` | Enroll member |
+| DELETE | `/classes/{class_id}/enroll/{member_id}` | Remove member |
+| PUT | `/classes/{class_id}/checkin/{member_id}` | Mark attendance |
+
+### Machines
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/machines/` | List machines (optional `status_filter`, `category_filter`) |
+| GET | `/machines/{machine_id}` | Get machine details |
+| POST | `/machines/` | Add machine |
+| PUT | `/machines/{machine_id}` | Update machine |
+| DELETE | `/machines/{machine_id}` | Delete machine |
+| PATCH | `/machines/{machine_id}/status` | Update machine status |
+| GET | `/machines/{machine_id}/usage` | Get machine usage history |
+
+### Machine Usage
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/machines/{machine_id}/start` | Start a session (sign member onto machine) |
+| PUT | `/machines/{machine_id}/end/{usage_id}` | End a session |
+| GET | `/stats/machine/{machine_id}` | Usage stats for a machine |
+| GET | `/stats/member/{member_id}` | Usage stats for a member |
+
+### Plans
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/plans/` | List plans |
+| GET | `/plans/{plan_id}` | Get plan details |
+| POST | `/plans/` | Create plan |
+| PUT | `/plans/{plan_id}` | Update plan |
+| DELETE | `/plans/{plan_id}` | Delete plan |
+
+### Memberships
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/memberships/members/{member_id}/enroll` | Enroll member in a plan |
+| GET | `/memberships/members/{member_id}/current` | Get current membership |
+| PUT | `/memberships/members/{member_id}/{plan_id}/renew` | Renew membership |
+
+### Trainer Dashboard
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/trainer/my-classes` | Classes taught by the logged-in trainer |
+| GET | `/trainer/classes/{class_id}/roster` | Full roster for a class |
+
+### Manager Analytics
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/manager/dashboard/overview` | Dashboard summary stats |
+| GET | `/manager/analytics/machine-usage` | Machine usage analytics (optional `days`) |
+| GET | `/manager/analytics/class-enrollment` | Class enrollment stats |
+| GET | `/manager/analytics/membership-status` | Membership status breakdown |
+| GET | `/manager/analytics/staff-roles` | Staff role distribution |
+| GET | `/manager/analytics/top-members` | Most active members |
 
 ## Database Schema
 
-### Core Tables
-- **Member**: User profiles, status, membership details
-- **Staff**: Employee accounts with roles (Reception, Trainer, Manager)
-- **MemberPlan**: Subscription plans (Basic, Premium, VIP)
-- **Membership**: Active memberships linking Members to Plans
-- **Class**: Fitness classes with trainer assignment
-- **Machine**: Equipment with status tracking
-- **ClassEnrollment** (junction): Member-to-Class many-to-many
-- **MachineUsage** (junction): Member-to-Machine usage tracking
+### Tables
+
+| Table | Type | Description |
+|-------|------|-------------|
+| `member` | Entity | Member profiles and status |
+| `staff` | Entity | Employee accounts with a role (Reception, Trainer, Manager) |
+| `class` | Entity | Fitness classes, each assigned to a trainer |
+| `machine` | Entity | Equipment with status and category |
+| `member_plan` | Entity | Subscription plans (Basic, Premium, VIP) |
+| `membership` | Relationship | Links a member to a plan, with dates |
+| `class_enrollment` | Association | Member ↔ Class enrollment and attendance |
+| `machine_usage` | Relationship | Member ↔ Machine sessions with start/end times |
 
 ### Relationships
-- Member → Membership (1:Many)
-- Membership → MemberPlan (Many:1)
-- Staff → Class (1:Many)
-- Class ↔ Member (Many:Many via ClassEnrollment)
-- Machine ↔ Member (Many:Many via MachineUsage)
+- Member → Membership (1 : many)
+- Membership → MemberPlan (many : 1)
+- Staff (Trainer) → Class (1 : many)
+- Member ↔ Class (many : many, via `class_enrollment`)
+- Member ↔ Machine (many : many, via `machine_usage`)
 
 ## Development Workflow
 
-### Adding a New Feature
+### Adding a new feature
 
-1. **Backend**
-   - Define ORM model or modify existing in `models.py`
-   - Create Pydantic schemas in `schemas/`
-   - Implement API routes in `routes/`
-   - Add authentication checks if needed
+**Backend**
+1. Add or modify the ORM model in `models.py`.
+2. Create Pydantic schemas in `schemas/`.
+3. Implement the routes in `routes/`, using `require_role()` where access should be restricted.
+4. Register any new router in `main.py`.
 
-2. **Frontend**
-   - Create API service function in `src/services/api.ts`
-   - Build React component in `src/components/`
-   - Integrate into dashboard page
+**Frontend**
+1. Add the API call to `src/services/api.ts`.
+2. Build the UI in `src/components/` (reusable) or directly in a page under `src/pages/`.
+3. Wire it into the relevant dashboard.
 
-3. **Testing**
-   - Test API endpoints via Swagger UI at `/docs`
-   - Verify frontend integration
+**Testing**
+1. Exercise the new endpoints in Swagger UI at `/docs`.
+2. Verify the frontend integration in the browser.
 
 ## Security Considerations
 
-- Passwords are hashed before storage
-- Role-based access control on all protected endpoints
-- CORS configured for frontend domain
-- Input validation via Pydantic schemas
-- Database connection pooling enabled
+What's in place:
+- Passwords are hashed before storage.
+- Role checks (`require_role()`) on protected endpoints.
+- Input validation via Pydantic schemas.
+- Parameterized SQL queries to prevent SQL injection.
+- CORS restricted to local development origins.
 
-## Future Enhancements
-
-- JWT token authentication with refresh tokens
-- Email notifications for member events
-- Payment integration for membership renewals
-- Advanced analytics with charts/graphs
-- Mobile app version
-- SMS notifications
-- QR code check-ins
-- Equipment maintenance scheduling
-
-## Demo Login Credentials
-
-After running `python seed_data.py`, use these accounts:
-
-| Role      | Email                  | Password    |
-|-----------|------------------------|-------------|
-| Manager   | manager@gym.com        | password123 |
-| Trainer   | trainer@gym.com        | password123 |
-| Reception | reception@gym.com      | password123 |
+Known limitations (this is a coursework project, not production-ready):
+- **The `staff_id` query parameter is not real authentication.** It is supplied by the client, so anyone who knows or guesses a valid staff ID can call the API with that staff member's role. Replacing it with signed tokens (e.g. JWT) is the top item under [Future Enhancements](#future-enhancements).
+- Staff IDs appear in URLs, so they can end up in browser history and server logs.
+- The logged-in user is stored in `localStorage`.
+- Demo credentials are weak and shared; seed data must not be used in a deployed environment.
 
 ## Troubleshooting
 
 ### Backend won't start
-- Check PostgreSQL is running
-- Verify database credentials in `.env`
-- Ensure port 8000 is available; if not: `uvicorn main:app --reload --port 8001`
+- Make sure PostgreSQL is running and the `gym_db` database exists.
+- Check the credentials in `backend/.env`.
+- If port 8000 is in use: `uvicorn main:app --reload --port 8001` (then update the API base URL in `frontend/src/services/api.ts`).
 
-### Frontend can't connect to API
-- Verify backend is running on http://localhost:8000
-- Check CORS settings in `backend/main.py`
-- Browser console for specific errors
-- If port 5173 is taken: `npm run dev -- --port 5174`
+### Frontend can't reach the API
+- Confirm the backend is running at http://localhost:8000.
+- Check the CORS origins in `backend/config.py` include the port the frontend is running on.
+- Check the browser console for the specific error.
+- If port 5173 is in use: `npm run dev -- --port 5174` (and add that origin to `config.py`).
 
 ### Database errors
-- Ensure PostgreSQL user has proper permissions
-- Check database name matches `.env`
-- Review database logs for detailed errors
+- Make sure the PostgreSQL user has permission to create tables in `gym_db`.
+- Check that the database name in `.env` matches the one you created.
+- Review the PostgreSQL logs for details.
+
+## Future Enhancements
+
+- JWT authentication with refresh tokens (replacing the `staff_id` parameter)
+- Email and SMS notifications for member events
+- Payment integration for membership renewals
+- Charts and graphs for manager analytics
+- QR code check-ins
+- Equipment maintenance scheduling
+- Mobile app
 
 ## Contributing
 
-1. Create a feature branch
-2. Implement changes following project structure
-3. Test thoroughly
-4. Submit pull request with description
+1. Create a feature branch.
+2. Implement your changes following the project structure above.
+3. Test via Swagger UI and the frontend.
+4. Open a pull request describing the change.
 
 ## License
 
-This project is part of the Spring 2026 Computer Science coursework.
+This project is part of Spring 2026 Computer Science coursework.
 
 ## Acknowledgments
 
-- **GitHub Copilot** — AI pair programming assistant used throughout development to help implement features, debug issues, and accelerate code generation.
- 
+- **GitHub Copilot** — AI pair-programming assistant used throughout development to help implement features, debug issues, and speed up code generation.
